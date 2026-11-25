@@ -395,10 +395,16 @@ kern_return_t ASFWAudioDevice::StartOrJoinWire(IOUserAudioStartStopFlags in_flag
         const uint32_t startRateHz = static_cast<uint32_t>(ivars.device.currentSampleRate);
         {
             WireReleaseReason releaseReason{};
+            const auto* startProfile =
+                static_cast<const ASFW::Isoch::Audio::IAudioStreamProfile*>(ivars.device.profile);
+            // PrepareWire (no client) still keeps the wire it finds; only a
+            // CoreAudio start honours the profile's rejoin choice.
+            const bool rejoinAllowed =
+                !startClientIO || !startProfile || startProfile->RejoinsRetainedWire();
             const auto plan = local.wire.PlanStart(
                 startRateHz,
                 TransportHealthy(ivars, local.transportStopStatus.load(std::memory_order_acquire)),
-                &releaseReason);
+                &releaseReason, rejoinAllowed);
             if (plan == WireStartPlan::kReleaseThenFresh) {
                 const kern_return_t releaseKr =
                     ReleaseKeptWire(ivars, local.transportStopStatus, local.wire, releaseReason);

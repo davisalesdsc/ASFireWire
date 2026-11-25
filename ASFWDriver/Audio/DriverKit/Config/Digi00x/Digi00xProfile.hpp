@@ -85,6 +85,12 @@ public:
     // joins the kept wire and StopIO leaves it sending silence
     // (Runtime/WireRetention.hpp).
     [[nodiscard]] bool RetainsWireAcrossStopIO() const noexcept override { return true; }
+    // Every CoreAudio start is a full bring-up nonetheless. On a 003 Console
+    // (macOS 26.5, Pro Tools) a session joined to the kept wire played but
+    // recorded silence once the I/O buffer was 128 frames; a full bring-up is
+    // the path the family's audio support was verified on. The wire is still
+    // kept across StopIO, so MIDI and the control port run between sessions.
+    [[nodiscard]] bool RejoinsRetainedWire() const noexcept override { return false; }
     [[nodiscard]] bool StartsWireBeforePublication() const noexcept override { return true; }
 
 private:

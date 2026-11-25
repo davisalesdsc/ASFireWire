@@ -1639,6 +1639,24 @@ void IMPL(ASFWAudioDriver, TxPreparationReady)
                     ivars->runtime.txFillMaxDurationTicks.exchange(
                         0, std::memory_order_relaxed)) / 1000,
                 boundedMargin <= kCommittedMarginDangerPackets ? " DANGER" : "");
+            // Capture ring against the HAL's reads, for "playback fine, input
+            // silent": lead = frames written past the HAL read end (negative: the
+            // HAL reads ahead of what was received, so every read is zero-filled).
+            {
+                const uint64_t capWrite =
+                    directControl->captureRingWriteFrame.load(std::memory_order_acquire);
+                const uint64_t capRead =
+                    directControl->captureRingReadFrame.load(std::memory_order_acquire);
+                ASFW_LOG(DirectAudio,
+                         "[RxRing] write=%llu readEnd=%llu lead=%lld starve=%llu startStarve=%llu "
+                         "firstRead=%u",
+                         capWrite, capRead,
+                         static_cast<long long>(capWrite) - static_cast<long long>(capRead),
+                         directControl->captureRingStarvations.load(std::memory_order_relaxed),
+                         directControl->captureRingStartupStarvations.load(std::memory_order_relaxed),
+                         directControl->captureRingFirstCompleteRead.load(std::memory_order_relaxed)
+                             ? 1U : 0U);
+            }
             // Content, for the silent-start investigation (the device locked
             // to our stream and playing nothing): did CoreAudio's samples
             // reach packet memory? Counters are cumulative for the stream;

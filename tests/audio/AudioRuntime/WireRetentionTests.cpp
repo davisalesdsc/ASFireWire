@@ -70,6 +70,18 @@ TEST(WireRetention, RetainedWireAtSameRateIsRejoined) {
     EXPECT_EQ(w.PlanStart(k48k, true, nullptr), WireStartPlan::kRejoin);
 }
 
+TEST(WireRetention, RetainedWireIsReleasedFirstWhenTheProfileDisablesRejoin) {
+    WireRetention w = RetainedAt(k48k);
+    WireReleaseReason reason{};
+    EXPECT_EQ(w.PlanStart(k48k, true, &reason, false), WireStartPlan::kReleaseThenFresh);
+    EXPECT_EQ(reason, WireReleaseReason::kRejoinDisabled);
+}
+
+TEST(WireRetention, RejoinDisabledDoesNotTouchAWireThatIsDown) {
+    WireRetention w;
+    EXPECT_EQ(w.PlanStart(k48k, true, nullptr, false), WireStartPlan::kFreshStart);
+}
+
 TEST(WireRetention, RetainedWireAtOtherRateIsReleasedFirst) {
     WireRetention w = RetainedAt(k48k);
     WireReleaseReason reason{};

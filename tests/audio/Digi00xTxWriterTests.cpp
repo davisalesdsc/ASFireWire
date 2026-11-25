@@ -210,6 +210,8 @@ TEST(Digi00xTxWriter, TheProfileKeepsTheWireFromAttachToDetach) {
     const ASFW::Isoch::Audio::Digi00x::Profiles::Digi00xProfile profile{"Digi 003"};
     EXPECT_TRUE(profile.StartsWireBeforePublication());
     EXPECT_TRUE(profile.RetainsWireAcrossStopIO());
+    // ...but every CoreAudio start is a full bring-up (input silent on a joined wire).
+    EXPECT_FALSE(profile.RejoinsRetainedWire());
 }
 
 } // namespace

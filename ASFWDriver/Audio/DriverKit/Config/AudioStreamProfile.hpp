@@ -147,6 +147,12 @@ public:
     // family is verified on hardware.
     [[nodiscard]] virtual bool RetainsWireAcrossStopIO() const noexcept { return false; }
 
+    // With a kept wire, whether StartIO joins it (true) or releases it and
+    // brings the streams up fresh (false). A profile that keeps the wire only
+    // for traffic that must outlive CoreAudio IO (MIDI) can still start every
+    // CoreAudio session from a full bring-up.
+    [[nodiscard]] virtual bool RejoinsRetainedWire() const noexcept { return true; }
+
     // Establish transport before HAL publication and rebuild it in the stopped
     // configuration window, independently of whether a client is running.
     [[nodiscard]] virtual bool StartsWireBeforePublication() const noexcept { return false; }

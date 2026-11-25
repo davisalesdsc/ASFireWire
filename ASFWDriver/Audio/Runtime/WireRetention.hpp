@@ -41,6 +41,7 @@ enum class WireReleaseReason : uint8_t {
     kRateMismatch,    ///< StartIO at a rate the kept wire does not carry.
     kTimeoutLimit,    ///< Too many consecutive first-timestamp timeouts.
     kHalStartFailed,  ///< The HAL refused the start on a joined wire.
+    kRejoinDisabled,  ///< The profile keeps the wire for its own sake but starts IO fresh.
 };
 
 [[nodiscard]] constexpr const char* WireStateName(WireState s) noexcept {
@@ -62,6 +63,7 @@ enum class WireReleaseReason : uint8_t {
         case WireReleaseReason::kRateMismatch: return "rate-mismatch";
         case WireReleaseReason::kTimeoutLimit: return "timeout-limit";
         case WireReleaseReason::kHalStartFailed: return "hal-start-failed";
+        case WireReleaseReason::kRejoinDisabled: return "rejoin-disabled";
     }
     return "?";
 }
@@ -92,9 +94,12 @@ public:
     [[nodiscard]] bool IoRestartPending() const noexcept { return ioRestartPending_; }
 
     /// StartIO at `rateHz`. `transportHealthy` is false after a transport fault
-    /// or an unresolved stop.
+    /// or an unresolved stop. `rejoinAllowed` false makes every start on a kept
+    /// wire a release and a full bring-up: for a profile that keeps the wire
+    /// only so that something else on it (MIDI) runs while CoreAudio is stopped.
     [[nodiscard]] WireStartPlan PlanStart(uint32_t rateHz, bool transportHealthy,
-                                          WireReleaseReason* releaseReason) const noexcept {
+                                          WireReleaseReason* releaseReason,
+                                          bool rejoinAllowed = true) const noexcept {
         if (state_ != WireState::kRetained) return WireStartPlan::kFreshStart;
         WireReleaseReason reason{};
         if (rateChangePending_) {
@@ -105,6 +110,8 @@ public:
             reason = WireReleaseReason::kTransportFault;
         } else if (rateHz != rateHz_) {
             reason = WireReleaseReason::kRateMismatch;
+        } else if (!rejoinAllowed) {
+            reason = WireReleaseReason::kRejoinDisabled;
         } else {
             return WireStartPlan::kRejoin;
         }
